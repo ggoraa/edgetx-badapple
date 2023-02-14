@@ -18,6 +18,7 @@ local function run(event, touchState)
             lcd.drawPoint(coords[2] + 22, coords[1])
         end
         -- print(i)
+        lcd.drawText(0, 0, string.format("%d", i))
         lcd.refresh()
         while (time + 10 > getTime()) do end
     end

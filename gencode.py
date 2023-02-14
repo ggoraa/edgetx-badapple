@@ -22,7 +22,8 @@ with open('badapple.lua', 'w') as lua_file:
     prev_frame = np.zeros((64,128,1), np.uint8)
     prev_frame[:] = 255
 
-    # for _ in range(0, 30):
+    # for _ in range(0, 0):
+    # for _ in range(0, 20):
     # for _ in range(0, 120):    
     # for _ in range(0, 240):    
     # for _ in range(0, 500):    
