@@ -5,6 +5,7 @@ end
 
 local function init()
     lcd.clear()
+    playFile("/SOUNDS/badapple.wav")
 end
 
 local function run(event, touchState)

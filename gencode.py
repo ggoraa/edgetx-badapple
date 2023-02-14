@@ -23,10 +23,10 @@ with open('badapple.lua', 'w') as lua_file:
     prev_frame[:] = 255
 
     # for _ in range(0, 30):
-    for _ in range(0, 120):    
+    # for _ in range(0, 120):    
     # for _ in range(0, 240):    
     # for _ in range(0, 500):    
-    # while True:
+    while True:
         ret, frame = video.read()
         if not ret: break
         lua_file.write("{")
@@ -48,7 +48,7 @@ with open('badapple.lua', 'w') as lua_file:
     lua_file.write("}\n\n")
     
     # Display logic
-    with open("display.lua", "r") as display_file:
+    with open("renderer.lua", "r") as display_file:
         lua_file.write(display_file.read())
 
 video.release()

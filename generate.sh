@@ -10,6 +10,15 @@ else
     echo "Video already converted, skipping..."
 fi
 
+if [[ ! -f "badapple-qx7.wav" ]]; then
+    echo "Extracting audio..."
+    ffmpeg -i badapple-qx7.mp4 -q:a 0 -map a badapple-qx7-temp.mp3
+    ffmpeg -i badapple-qx7-temp.mp3 -ar 8000 -map_channel 0.0.0 -c:v copy badapple-qx7.wav
+    rm badapple-qx7-temp.mp3
+else 
+    echo "Audio already extracted, skipping..."
+fi
+
 echo "Running .lua generator..."
 rm badapple.lua
 python3 gencode.py
