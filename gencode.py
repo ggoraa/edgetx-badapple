@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import time
 
 video = cv.VideoCapture("badapple-qx7.mp4")
+all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 
 def areColorsDifferent(first, second):
     if first > second:
@@ -49,6 +50,9 @@ with open('badapple.lua', 'w') as lua_file:
         frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         height, width = frame.shape
 
+        current_frame = int(video.get(cv.CAP_PROP_POS_FRAMES))
+        print(f"Rendering frame {current_frame}/{all_frames} ({(current_frame / all_frames * 100):.2f}%)...")
+
         lua_file.write("{")
 
         changed_pixels = []
@@ -58,9 +62,6 @@ with open('badapple.lua', 'w') as lua_file:
             for y in range(0, height):
                 if areColorsDifferent(prev_frame[y, x], frame[y, x]):
                     changed_pixels.append(Point(x, y))
-                    # lua_file.write("{")
-                    # lua_file.write(f"{y},{x}")
-                    # lua_file.write("},")
         
 
         for pixel in changed_pixels:
@@ -80,19 +81,19 @@ with open('badapple.lua', 'w') as lua_file:
                 if ypixel.x != pixel.x: continue
                 if ypixel.y < y1: y1 = ypixel.y
                 if ypixel.y > y2: y2 = ypixel.y
-            print(x1, y1, x2, y2)
+            # print(x1, y1, x2, y2)
 
             overlap = False
 
             for rec in rectangles:
                 if do_overlap(Rect(x1, y1, x2, y2), rec):
-                    print("overlapping")
+                    # print("overlapping")
                     overlap = True
                     break
             if not overlap:
                 rectangles.append(Rect(x1, y1, x2 - x1, y2 - y1))
-                print(rectangles)
-                time.sleep(1)
+                # print(rectangles)
+                # time.sleep(1)
                 lua_file.write("{")
                 lua_file.write(f"{x1},{y1},{x2 - x1},{y2 - y1}")
                 lua_file.write("},")
@@ -103,9 +104,13 @@ with open('badapple.lua', 'w') as lua_file:
         lua_file.write("},")
 
     lua_file.write("}\n\n")
+
+    print("Adding player...")
     
     with open("player.lua", "r") as display_file:
         lua_file.write(display_file.read())
+
+print("Done.")
 
 video.release()
 cv.destroyAllWindows()
