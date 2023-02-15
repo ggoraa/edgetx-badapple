@@ -13,7 +13,7 @@ local function run(event, touchState)
     for i, frames in ipairs(video_data) do
         local time = getTime()
         for _, coords in ipairs(frames) do
-            print(string.format("Rectangle - x1: %d, x2: %d, y1: %d, y2: %d", coords[2], coords[1], coords[4], coords[3]))
+            -- print(string.format("Rectangle - x1: %d, x2: %d, y1: %d, y2: %d", coords[2], coords[1], coords[4], coords[3]))
             lcd.drawFilledRectangle(coords[2], coords[1], coords[4], coords[3])
         end
         print("frame: ", i)
