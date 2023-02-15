@@ -11,11 +11,12 @@ end
 local function run(event, touchState)
     lcd.clear()
     for i, frames in ipairs(video_data) do
-        -- lcd.clear()
         local time = getTime()
+        -- for _, coords in ipairs(frames) do
+        --     lcd.drawPoint(coords[1] + 22, coords[2])
+        -- end
         for _, coords in ipairs(frames) do
-            -- print(coords[1], coords[2], coords)
-            lcd.drawPoint(coords[2] + 22, coords[1])
+            lcd.drawFilledRectangle(coords[2] + 22, coords[1], coords[4] + 22, coords[3])
         end
         -- print(i)
         lcd.drawText(0, 0, string.format("%d", i))
