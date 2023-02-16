@@ -20,8 +20,9 @@ local function run(event, touchState)
         print("dynamic_frame_limiter_offset: ", dynamic_frame_limiter_offset)
         framerate_time = getTime()
 
-        for _, coords in ipairs(frames) do
-            lcd.drawPoint(coords[2] + 22, coords[1])
+        for _, sq in ipairs(frames) do
+            -- lcd.drawPoint(coords[2] + 22, coords[1])
+            lcd.drawFilledRectangle(sq[1] + 22, sq[2], sq[1] + 21 + sq[3], sq[2] - 1 + sq[3])
         end
         lcd.refresh()
         print("frame limiter delay: ", 10 - dynamic_frame_limiter_offset)

@@ -21,4 +21,4 @@ fi
 
 echo "Running .lua generator..."
 rm badapple.lua
-python3 gencode.py
+python3 gencode.py $1
