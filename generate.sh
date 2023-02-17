@@ -20,5 +20,5 @@ else
 fi
 
 echo "Running .lua generator..."
-rm badapple.lua
+rm -rf bundle
 python3 gencode.py $1
