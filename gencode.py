@@ -68,8 +68,11 @@ def get_adjacent_pixels(pixel: Pixel, allowlist):
     return [p for p in adjacent_pixels if p in allowlist]
 
 # Combines supplied pixels into 2x2 squares. Canvas should be divisible by 2
-def combine_in_squares(pixels, square_size = 2):
-    # pixels_unused = pixels
+def combine_in_squares(pixels, unused = None, square_size = 2):
+    if unused == None:
+        pixels_unused = pixels
+    else:
+        pixels_unused = unused
 
     squares = []
 
@@ -83,27 +86,20 @@ def combine_in_squares(pixels, square_size = 2):
                 # print("Found pixel that can be made into a square: ", p)
                 # squares.append(Rect(p.x, p.y, p.x + 1, p.y + 1))
                 squares.append(Square(p.x, p.y, square_size))
-                # pixels_unused = list(set(pixels_unused) - set(pixel_set))
-    
-    # print(pixels_unused)
-    print(squares)
+                pixels_unused = list(set(pixels_unused) - set(pixel_set))
 
-    # for p in pixels_unused:
-    #     squares.append(Square(p.x, p.y, square_size / 2))
-    
-    # print(squares)
-    # print(square_size)
+    for p in pixels_unused:
+        squares.append(Square(p.x, p.y, square_size / 2))
 
-    # if len(squares) == 0: return [] # protection against infinite recursion
+    if len(squares) == 0: return [] # protection against infinite recursion
 
     # scale down everything
     new_pixels = []
     for sq in squares:
         new_pixels.append(Pixel(sq.x / 2, sq.y / 2))
 
-    time.sleep(2)
-    
     new_squares = combine_in_squares(new_pixels, square_size * 2)
+    # print(len(new_squares), len(squares))
     if len(new_squares) == 0:
         return squares
     else:
@@ -115,7 +111,7 @@ video_data = []
 # lua_file.write("local video_data = {")
 
 # Converting video into an int table
-prev_frame = np.zeros((64,128,1), np.uint8)
+prev_frame = np.zeros((64,128), np.uint8)
 prev_frame[:] = 255
 
 # for _ in range(0, 0):
