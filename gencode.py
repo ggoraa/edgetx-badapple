@@ -9,24 +9,10 @@ import time
 video = cv.VideoCapture("badapple-qx7.mp4")
 all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 title = "Bad Apple"
+subtitle = "on EdgeTX"
 author = "GGorAA"
 frame_chunk_size = 20 # frames per chunk
 titlescreen_image_frame = 90 # frame of the video that would be extracted as the titlescreen image
-
-def areColorsDifferent(first, second):
-    if first > second:
-        return first - second > 100
-    else:
-        return second - first > 100
-    # value = math.sqrt(pow(first - second, 2))
-    # return value > 200
-
-# Yield successive n-sized
-# chunks from l.
-def divide_chunks(l, n):
-    # looping till length l
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
 
 @dataclass
 class Pixel:
@@ -38,10 +24,10 @@ class Pixel:
 
 @dataclass
 class Rect:
-    x1: int
-    y1: int
-    x2: int
-    y2: int
+    # x1 y1
+    top_left: Pixel
+    # x2 y2
+    bottom_right: Pixel
 
 @dataclass
 class Square:
@@ -49,7 +35,14 @@ class Square:
     y: int
     size: int
 
-def areColorsDifferent(first, second):
+# Yield successive n-sized
+# chunks from l.
+def divide_chunks(l, n):
+    # looping till length l
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+def are_colors_different(first, second):
     if first > second:
         return first - second > 100
     else:
@@ -70,40 +63,16 @@ def get_adjacent_pixels(pixel: Pixel, whitelist):
         Pixel(x-1, y+1), Pixel(x+1, y+1)]
     return [p for p in adjacent_pixels if p in whitelist]
 
-# High level function over combine_in_squares.
-# def combine_in_squares_hl(pixels):
-#     squares = combine_in_squares()
+# Renders a supplied frame for usage by the Bad Apple player
+def render_frame(frame, is_pixel_whitelisted):
+    changed_pixels = []
+    for x in range(0, width):
+        for y in range(0, height):
+            if is_pixel_whitelisted(frame[y, x], x, y):
+                changed_pixels.append(Pixel(x, y))
 
-# Combines supplied pixels into 2x2 squares. Canvas should be divisible by 2
-def combine_in_squares(pixels, unused = None, square_size = 2):
-    squares = []
+    return []
 
-    unused_pixels = pixels
-
-    for p in pixels:
-        if p.x % 2 == 0 and p.y % 2 == 0: # is on the top left of a rect
-            adjacent = get_adjacent_pixels(p, pixels)
-
-            pixel_set = {Pixel(p.x + 1, p.y), Pixel(p.x, p.y + 1), Pixel(p.x + 1, p.y + 1)}
-
-            if pixel_set.issubset(adjacent):
-                squares.append(Square(p.x, p.y, square_size))
-                pixel_set.add(p)
-                if unused_pixels is not None:
-                    unused_pixels = list(set(unused_pixels) - pixel_set)
-
-    unused_pixels = list(map(lambda p: Square(p.x, p.y, square_size / 2), unused_pixels))
-
-    if len(squares) == 0: return [] # protection against infinite recursion
-
-    new_squares = combine_in_squares(
-        list(map(lambda sq: Pixel(sq.x / 2, sq.y / 2), squares)), 
-        unused_pixels + unused if unused is not None else [],
-        square_size * 2)
-    if len(new_squares) == 0:
-        return squares + unused if unused is not None else []
-    else:
-        return new_squares
 
 video_data = []
 
@@ -111,7 +80,7 @@ video_data = []
 prev_frame = np.zeros((64,84), np.uint8)
 prev_frame[:] = 255
 
-titlescreen_image = None
+titlescreen_image = []
 
 # for _ in range(0, 0):
 # for _ in range(0, 20):
@@ -131,30 +100,18 @@ for _ in range(0, 120):
     print(f"Rendering frame {current_frame}/{all_frames} ({(current_frame / all_frames * 100):.2f}%)")
 
     if current_frame == titlescreen_image_frame:
-        titlescreen_image = frame
+        for x in range(0, width):
+            for y in range(0, height):
+                if frame[y, x] < 100:
+                    titlescreen_image.append(Pixel(x, y))
+    # titlescreen_image = render_frame(frame, lambda p, x, y: p < 100)
 
-    changed_pixels = []
-    for x in range(0, width):
-        for y in range(0, height):
-            if areColorsDifferent(prev_frame[y, x], frame[y, x]):
-                changed_pixels.append(Pixel(x, y))
-
-    # encoded_frame = combine_in_squares(changed_pixels)
+    encoded_frame = render_frame(frame, lambda p, x, y: are_colors_different(prev_frame[y, x], p))
 
     prev_frame = frame
     video_data.append(encoded_frame)
 
 chunked_video_data = divide_chunks(video_data, frame_chunk_size)
-titlescreen_image_data = []
-
-# TODO: Optimise titlescreen image the same way any other frame is optimised
-if titlescreen_image is not None:
-    height, width = titlescreen_image.shape
-    for x in range(0, width):
-        for y in range(0, height):
-            if titlescreen_image[y, x] < 100:
-                titlescreen_image_data.append(Pixel(x, y))
-titlescreen_image_data = combine_in_squares(titlescreen_image_data)
 
 try:
     os.mkdir("bundle")
@@ -170,21 +127,26 @@ for i, chunk in enumerate(chunked_video_data):
         file.write("local chunk_data = {")
         for frame in chunk:
             file.write("{")
-            for sq in frame:
+            for data in frame:
                 file.write("{")
-                file.write(f"{sq.x},{sq.y},{sq.size}")
+                match data:
+                    case Pixel(x, y): file.write(f"{x},{y}")
+                    case Square(x, y, size): file.write(f"{x},{y},{size}")
+                    case Rect(top_left, bottom_right): file.write(f"{top_left.x},{top_left.y},{bottom_right.x},{bottom_right.y}")
+                    case default: pass # should never get here
                 file.write("},")
             file.write("},")
         file.write("}\nreturn chunk_data")
 
 with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
-    file.write(f"local titlescreen_title = \"{title}\"\n")
-    file.write(f"local titlescreen_subtitle = \"by {author}\"\n")
-    file.write("local titlescreen_image = {")
-    for sq in titlescreen_image_data:
+    file.write(f"local title = \"{title}\"\n")
+    file.write(f"local subtitle = \"{subtitle}\"\n")
+    file.write(f"local author = \"{author}\"\n")
+    file.write("local banner_image = {")
+    for p in titlescreen_image:
         file.write("{")
-        # file.write(f"{sq.x},{sq.y}")
-        file.write(f"{sq.x},{sq.y},{sq.size}")
+        file.write(f"{p.x},{p.y}")
+        # file.write(f"{sq.x},{sq.y},{sq.size}")
         file.write("},")
     file.write("}\n")
     width = video.get(cv.CAP_PROP_FRAME_WIDTH)
@@ -192,7 +154,7 @@ with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
     file.write("local video_size = {")
     file.write(f"{width:.0f},{height:.0f}")
     file.write("}\n")
-    file.write("return titlescreen_title, titlescreen_subtitle, titlescreen_image, video_size")
+    file.write("return title, subtitle, author, banner_image, video_size")
 
 
 shutil.copy2("badapple.lua", "bundle/SCRIPTS/TOOLS")

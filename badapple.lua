@@ -42,7 +42,7 @@ end
 local function init()
     lcd.clear()
 
-    local title, subtitle, image, video_size = loadScript("/SCRIPTS/BADAPPLE/info.lua")()
+    local title, subtitle, author, image, video_size = loadScript("/SCRIPTS/BADAPPLE/info.lua")()
     video_x_offset = (128 - video_size[1]) / 2
     video_y_offset = (64 - video_size[2]) / 2
     
@@ -50,7 +50,8 @@ local function init()
         if fname == "info.lua" then goto CONTINUE end
         lcd.clear()
         lcd.drawText(2, 15, title, MIDSIZE)
-        lcd.drawText(2, 35, subtitle)
+        lcd.drawText(40, 25, subtitle)
+        lcd.drawText(2, 35, string.format("by %s", author), SMLSIZE)
         lcd.drawText(0, 54, fname)
         renderFrame(image, false)
         lcd.refresh()

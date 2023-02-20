@@ -9,4 +9,4 @@ Showcase: https://youtu.be/IH8_Ke-uJ1Y
 
 # Screenshot(s):
 
-![](.github/images/photo_2023-02-20%2003.31.57.jpeg)
+![](.github/images/loading_screen.jpg)
