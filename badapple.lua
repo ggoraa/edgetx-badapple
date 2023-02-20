@@ -49,14 +49,18 @@ local function init()
     for fname in dir("/SCRIPTS/BADAPPLE") do
         if fname == "info.lua" then goto CONTINUE end
         lcd.clear()
-        lcd.drawText(2, 15, title, MIDSIZE)
-        lcd.drawText(40, 25, subtitle)
-        lcd.drawText(2, 35, string.format("by %s", author), SMLSIZE)
-        lcd.drawText(0, 54, fname)
-        renderFrame(image, false)
+        lcd.drawText(2, 12, title, MIDSIZE)
+        lcd.drawText(40, 24, subtitle, SMLSIZE)
+        lcd.drawText(2, 36, string.format("by %s", author))
+        lcd.drawText(2, 55, fname, SMLSIZE)
+        for _, p in ipairs(image) do
+            lcd.drawPoint(p[1] + 50, p[2])
+        end
+        -- renderFrame(image, false)
         lcd.refresh()
         loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), SMLSIZE)
         collectgarbage()
+        delay(100)
         ::CONTINUE::
     end
     title = nil
