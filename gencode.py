@@ -8,6 +8,8 @@ import time
 
 video = cv.VideoCapture("badapple-qx7.mp4")
 all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+title = "Bad Apple"
+author = "GGorAA"
 frame_chunk_size = 40 # frames per chunk
 titlescreen_image_frame = 90 # frame of the video that would be extracted as the titlescreen image
 
@@ -141,7 +143,7 @@ while True:
             if areColorsDifferent(prev_frame[y, x], frame[y, x]):
                 changed_pixels.append(Pixel(x, y))
 
-    # encoded_frame = combine_in_squares(changed_pixels)
+    encoded_frame = combine_in_squares(changed_pixels)
 
     prev_frame = frame
     video_data.append(encoded_frame)
@@ -179,8 +181,8 @@ for i, chunk in enumerate(chunked_video_data):
         file.write("}\nreturn chunk_data")
 
 with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
-    file.write("local titlescreen_title = \"Bad Apple\"\n")
-    file.write("local titlescreen_subtitle = \"by GGorAA\"\n")
+    file.write(f"local titlescreen_title = \"{title}\"\n")
+    file.write(f"local titlescreen_subtitle = \"by {author}\"\n")
     file.write("local titlescreen_image = {")
     for p in titlescreen_image_data:
         file.write("{")
