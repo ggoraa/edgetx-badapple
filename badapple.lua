@@ -4,15 +4,15 @@ local function delay(time)
     local currentTime = getTime()
     while (currentTime + time > getTime()) do end
 end
-local chunk_count = 0
-
 local current_chunk = 0
 local current_chunk_data = nil
+local video_x_offset = 0
+local video_y_offset = 0
 
 local function loadNextChunk()
     current_chunk = current_chunk + 1
     current_chunk_data = nil
-    local script, err = loadScript(string.format("/SCRIPTS/TOOLS/BADAPPLE/chunk%d.lua", current_chunk))
+    local script, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", current_chunk))
     if (script == nil) then
         lcd.drawText(0, 0, string.format("chunk err: %s", err))
         lcd.refresh()
@@ -22,16 +22,46 @@ local function loadNextChunk()
     collectgarbage()
 end
 
-local function init()
-    for fname in dir("/SCRIPTS/TOOLS/BADAPPLE") do
-        lcd.clear()
-        chunk_count = chunk_count + 1
-        lcd.drawText(0, 0, string.format("Compiling %s...", fname))
-        lcd.drawText(0, 10, string.format("Total chunks: %d", chunk_count))
-        lcd.refresh()
-        loadScript(string.format("/SCRIPTS/TOOLS/BADAPPLE/%s", fname))
-        collectgarbage()
+local function renderFrame(frame, use_offsets)
+    use_offsets = use_offsets or true
+    for _, sq in ipairs(frame) do
+        if use_offsets then
+            lcd.drawFilledRectangle(
+                sq[1] + video_x_offset, sq[2] + video_y_offset,
+                sq[1] + video_x_offset + sq[3], sq[2] + video_y_offset + sq[3]
+            )
+        else
+            lcd.drawFilledRectangle(
+                sq[1], sq[2],
+                sq[1] + sq[3], sq[2] + sq[3]
+            )
+        end
     end
+end
+
+local function init()
+    lcd.clear()
+
+    local title, subtitle, image, video_size = loadScript("/SCRIPTS/BADAPPLE/info.lua")()
+    video_x_offset = (128 - video_size[1]) / 2
+    video_y_offset = (64 - video_size[2]) / 2
+    
+    for fname in dir("/SCRIPTS/BADAPPLE") do
+        if fname == "info.lua" then goto CONTINUE end
+        lcd.clear()
+        lcd.drawText(2, 15, title, MIDSIZE)
+        lcd.drawText(2, 35, subtitle)
+        lcd.drawText(0, 54, fname)
+        renderFrame(image, false)
+        lcd.refresh()
+        loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), SMLSIZE)
+        collectgarbage()
+        ::CONTINUE::
+    end
+    title = nil
+    subtitle = nil
+    image = nil
+    lcd.clear()
 end
 
 
@@ -44,7 +74,7 @@ local function run(event, touchState)
 
     ::RENDER::
 
-    for _, frames in ipairs(current_chunk_data) do
+    for _, frame in ipairs(current_chunk_data) do
         local time = getTime()
 
         lcd.drawText(0, 0, "FPS:")
@@ -55,11 +85,10 @@ local function run(event, touchState)
         print("dynamic_frame_limiter_offset: ", dynamic_frame_limiter_offset)
         framerate_time = getTime()
 
-        for _, coords in ipairs(frames) do
-            lcd.drawPoint(coords[2] + 22, coords[1])
-        end
+        renderFrame(frame)
         lcd.refresh()
         print("frame limiter delay: ", 10 - dynamic_frame_limiter_offset)
+        lcd.resetBacklightTimeout()
         while (time + (10 + dynamic_frame_limiter_offset) > getTime()) do end
     end
 

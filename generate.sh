@@ -21,4 +21,4 @@ fi
 
 echo "Running .lua generator..."
 rm -rf bundle
-python3 gencode.py $1
+python3 gencode.py

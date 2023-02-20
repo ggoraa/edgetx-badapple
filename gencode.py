@@ -8,7 +8,8 @@ import time
 
 video = cv.VideoCapture("badapple-qx7.mp4")
 all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
-frame_chunk_size = 5 # frames per chunk
+frame_chunk_size = 40 # frames per chunk
+titlescreen_image_frame = 90 # frame of the video that would be extracted as the titlescreen image
 
 def areColorsDifferent(first, second):
     if first > second:
@@ -59,22 +60,23 @@ def do_overlap(rect1, rect2):
 # this function from my request and it's better
 # than the stackoverflow variant
 
-def get_adjacent_pixels(pixel: Pixel, allowlist):
+def get_adjacent_pixels(pixel: Pixel, whitelist):
     x = pixel.x 
     y = pixel.y
     adjacent_pixels = [Pixel(x-1, y), Pixel(x+1, y), Pixel(x, y-1), 
         Pixel(x, y+1), Pixel(x-1, y-1), Pixel(x+1, y-1), 
         Pixel(x-1, y+1), Pixel(x+1, y+1)]
-    return [p for p in adjacent_pixels if p in allowlist]
+    return [p for p in adjacent_pixels if p in whitelist]
+
+# High level function over combine_in_squares.
+# def combine_in_squares_hl(pixels):
+#     squares = combine_in_squares()
 
 # Combines supplied pixels into 2x2 squares. Canvas should be divisible by 2
 def combine_in_squares(pixels, unused = None, square_size = 2):
-    if unused == None:
-        pixels_unused = pixels
-    else:
-        pixels_unused = unused
-
     squares = []
+
+    unused_pixels = pixels if unused is None else unused
 
     for p in pixels:
         if p.x % 2 == 0 and p.y % 2 == 0: # is on the top left of a rect
@@ -84,12 +86,13 @@ def combine_in_squares(pixels, unused = None, square_size = 2):
 
             if pixel_set.issubset(adjacent):
                 # print("Found pixel that can be made into a square: ", p)
-                # squares.append(Rect(p.x, p.y, p.x + 1, p.y + 1))
                 squares.append(Square(p.x, p.y, square_size))
-                pixels_unused = list(set(pixels_unused) - set(pixel_set))
+                pixel_set.add(p)
+                unused_pixels = list(set(unused_pixels) - pixel_set)
 
-    for p in pixels_unused:
-        squares.append(Square(p.x, p.y, square_size / 2))
+    # print(squares)
+    # print(unused_pixels)
+    # print(unused)
 
     if len(squares) == 0: return [] # protection against infinite recursion
 
@@ -98,8 +101,7 @@ def combine_in_squares(pixels, unused = None, square_size = 2):
     for sq in squares:
         new_pixels.append(Pixel(sq.x / 2, sq.y / 2))
 
-    new_squares = combine_in_squares(new_pixels, square_size * 2)
-    # print(len(new_squares), len(squares))
+    new_squares = combine_in_squares(new_pixels, unused_pixels, square_size * 2)
     if len(new_squares) == 0:
         return squares
     else:
@@ -107,12 +109,11 @@ def combine_in_squares(pixels, unused = None, square_size = 2):
 
 video_data = []
 
-# with open('badapple.lua', 'w') as lua_file:
-# lua_file.write("local video_data = {")
-
-# Converting video into an int table
-prev_frame = np.zeros((64,128), np.uint8)
+# an empty white frame (white because it's the default color on monochrome LCDs)
+prev_frame = np.zeros((64,84), np.uint8)
 prev_frame[:] = 255
+
+titlescreen_image = None
 
 # for _ in range(0, 0):
 # for _ in range(0, 20):
@@ -131,41 +132,71 @@ while True:
     current_frame = int(video.get(cv.CAP_PROP_POS_FRAMES))
     print(f"Rendering frame {current_frame}/{all_frames} ({(current_frame / all_frames * 100):.2f}%)")
 
-    for x in range(0, height):
-        for y in range(0, width):
-            if areColorsDifferent(prev_frame[x, y], frame[x, y]):
-                encoded_frame.append(Pixel(x, y))
-    
-    squares = combine_in_squares(encoded_frame)
+    if current_frame == titlescreen_image_frame:
+        titlescreen_image = frame
 
-    print(squares)
+    changed_pixels = []
+    for x in range(0, width):
+        for y in range(0, height):
+            if areColorsDifferent(prev_frame[y, x], frame[y, x]):
+                changed_pixels.append(Pixel(x, y))
+
+    # encoded_frame = combine_in_squares(changed_pixels)
 
     prev_frame = frame
     video_data.append(encoded_frame)
 
 chunked_video_data = divide_chunks(video_data, frame_chunk_size)
+titlescreen_image_data = []
 
-try: 
+# TODO: Optimise titlescreen image the same way any other frame is optimised
+# if titlescreen_image is not None:
+#     height, width = titlescreen_image.shape
+#     for x in range(0, width):
+#         for y in range(0, height):
+#             if titlescreen_image[y, x] < 100:
+#                 titlescreen_image_data.append(Pixel(x, y))
+
+try:
     os.mkdir("bundle")
     os.mkdir("bundle/SCRIPTS")
     os.mkdir("bundle/SCRIPTS/TOOLS")
-    os.mkdir("bundle/SCRIPTS/TOOLS/BADAPPLE")
+    os.mkdir("bundle/SCRIPTS/BADAPPLE")
+    os.mkdir("bundle/SOUNDS")
 except OSError as error: pass
 
 for i, chunk in enumerate(chunked_video_data):
-    with open(f"bundle/SCRIPTS/TOOLS/BADAPPLE/chunk{i + 1}.lua", "w") as file:
+    with open(f"bundle/SCRIPTS/BADAPPLE/chunk{i + 1}.lua", "w") as file:
         print(f"Writing chunk {i + 1}")
         file.write("local chunk_data = {")
         for frame in chunk:
             file.write("{")
-            for p in frame:
+            for sq in frame:
                 file.write("{")
-                file.write(f"{p.x},{p.y}")
+                file.write(f"{sq.x},{sq.y},{sq.size}")
                 file.write("},")
             file.write("},")
         file.write("}\nreturn chunk_data")
 
+with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
+    file.write("local titlescreen_title = \"Bad Apple\"\n")
+    file.write("local titlescreen_subtitle = \"by GGorAA\"\n")
+    file.write("local titlescreen_image = {")
+    for p in titlescreen_image_data:
+        file.write("{")
+        file.write(f"{p.x},{p.y}")
+        file.write("},")
+    file.write("}\n")
+    width = video.get(cv.CAP_PROP_FRAME_WIDTH)
+    height = video.get(cv.CAP_PROP_FRAME_HEIGHT)
+    file.write("local video_size = {")
+    file.write(f"{width:.0f},{height:.0f}")
+    file.write("}\n")
+    file.write("return titlescreen_title, titlescreen_subtitle, titlescreen_image, video_size")
+
+
 shutil.copy2("badapple.lua", "bundle/SCRIPTS/TOOLS")
+shutil.copy2("badapple-qx7.wav", "bundle/SOUNDS/badapple.wav")
 
 video.release()
 cv.destroyAllWindows()
