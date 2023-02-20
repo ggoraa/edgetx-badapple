@@ -10,7 +10,7 @@ video = cv.VideoCapture("badapple-qx7.mp4")
 all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 title = "Bad Apple"
 author = "GGorAA"
-frame_chunk_size = 40 # frames per chunk
+frame_chunk_size = 20 # frames per chunk
 titlescreen_image_frame = 90 # frame of the video that would be extracted as the titlescreen image
 
 def areColorsDifferent(first, second):
