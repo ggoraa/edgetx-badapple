@@ -78,7 +78,7 @@ def get_adjacent_pixels(pixel: Pixel, whitelist):
 def combine_in_squares(pixels, unused = None, square_size = 2):
     squares = []
 
-    unused_pixels = pixels if unused is None else unused
+    unused_pixels = pixels
 
     for p in pixels:
         if p.x % 2 == 0 and p.y % 2 == 0: # is on the top left of a rect
@@ -87,25 +87,21 @@ def combine_in_squares(pixels, unused = None, square_size = 2):
             pixel_set = {Pixel(p.x + 1, p.y), Pixel(p.x, p.y + 1), Pixel(p.x + 1, p.y + 1)}
 
             if pixel_set.issubset(adjacent):
-                # print("Found pixel that can be made into a square: ", p)
                 squares.append(Square(p.x, p.y, square_size))
                 pixel_set.add(p)
-                unused_pixels = list(set(unused_pixels) - pixel_set)
+                if unused_pixels is not None:
+                    unused_pixels = list(set(unused_pixels) - pixel_set)
 
-    # print(squares)
-    # print(unused_pixels)
-    # print(unused)
+    unused_pixels = list(map(lambda p: Square(p.x, p.y, square_size / 2), unused_pixels))
 
     if len(squares) == 0: return [] # protection against infinite recursion
 
-    # scale down everything
-    new_pixels = []
-    for sq in squares:
-        new_pixels.append(Pixel(sq.x / 2, sq.y / 2))
-
-    new_squares = combine_in_squares(new_pixels, unused_pixels, square_size * 2)
+    new_squares = combine_in_squares(
+        list(map(lambda sq: Pixel(sq.x / 2, sq.y / 2), squares)), 
+        unused_pixels + unused if unused is not None else [],
+        square_size * 2)
     if len(new_squares) == 0:
-        return squares
+        return squares + unused if unused is not None else []
     else:
         return new_squares
 
@@ -119,10 +115,10 @@ titlescreen_image = None
 
 # for _ in range(0, 0):
 # for _ in range(0, 20):
-# for _ in range(0, 120):    
+for _ in range(0, 120):    
 # for _ in range(0, 240):    
 # for _ in range(0, 500):    
-while True:
+# while True:
     ret, frame = video.read()
     if not ret: break
     encoded_frame = []
@@ -143,7 +139,7 @@ while True:
             if areColorsDifferent(prev_frame[y, x], frame[y, x]):
                 changed_pixels.append(Pixel(x, y))
 
-    encoded_frame = combine_in_squares(changed_pixels)
+    # encoded_frame = combine_in_squares(changed_pixels)
 
     prev_frame = frame
     video_data.append(encoded_frame)
@@ -152,12 +148,13 @@ chunked_video_data = divide_chunks(video_data, frame_chunk_size)
 titlescreen_image_data = []
 
 # TODO: Optimise titlescreen image the same way any other frame is optimised
-# if titlescreen_image is not None:
-#     height, width = titlescreen_image.shape
-#     for x in range(0, width):
-#         for y in range(0, height):
-#             if titlescreen_image[y, x] < 100:
-#                 titlescreen_image_data.append(Pixel(x, y))
+if titlescreen_image is not None:
+    height, width = titlescreen_image.shape
+    for x in range(0, width):
+        for y in range(0, height):
+            if titlescreen_image[y, x] < 100:
+                titlescreen_image_data.append(Pixel(x, y))
+titlescreen_image_data = combine_in_squares(titlescreen_image_data)
 
 try:
     os.mkdir("bundle")
@@ -184,9 +181,10 @@ with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
     file.write(f"local titlescreen_title = \"{title}\"\n")
     file.write(f"local titlescreen_subtitle = \"by {author}\"\n")
     file.write("local titlescreen_image = {")
-    for p in titlescreen_image_data:
+    for sq in titlescreen_image_data:
         file.write("{")
-        file.write(f"{p.x},{p.y}")
+        # file.write(f"{sq.x},{sq.y}")
+        file.write(f"{sq.x},{sq.y},{sq.size}")
         file.write("},")
     file.write("}\n")
     width = video.get(cv.CAP_PROP_FRAME_WIDTH)
