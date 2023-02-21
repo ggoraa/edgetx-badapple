@@ -1,3 +1,4 @@
+from enum import Enum
 import cv2 as cv
 import numpy as np
 import math
@@ -11,11 +12,11 @@ all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 title = "Bad Apple"
 subtitle = "on EdgeTX"
 author = "GGorAA"
-frame_chunk_size = 20 # frames per chunk
+frame_chunk_size = 5 # frames per chunk
 titlescreen_image_frame = 90 # frame of the video that would be extracted as the titlescreen image
 
 @dataclass
-class Pixel:
+class Point:
     x: int
     y: int
 
@@ -25,15 +26,21 @@ class Pixel:
 @dataclass
 class Rect:
     # x1 y1
-    top_left: Pixel
+    top_left: Point
     # x2 y2
-    bottom_right: Pixel
+    bottom_right: Point
 
 @dataclass
 class Square:
     x: int
     y: int
     size: int
+
+class Direction(Enum):
+    RIGHT = 0
+    LEFT = 1
+    TOP = 2
+    BOTTOM = 3
 
 # Yield successive n-sized
 # chunks from l.
@@ -52,26 +59,127 @@ def do_overlap(rect1, rect2):
     return not (rect1.x1 > rect2.x2 or rect1.x2 < rect2.x1 or rect1.y1 > rect2.y2 or rect1.y2 < rect2.y1)
 
 # bro chatgps is a goat, it has literatelly made 
-# this function from my request and it's better
-# than the stackoverflow variant
+# these three functions from my request and they work
+# flawlessly
 
-def get_adjacent_pixels(pixel: Pixel, whitelist):
+def find_closest_pixel(pixel: Point, pixel_list):
+    closest_distance = float('inf') # Set initial closest distance to infinity
+    closest_pixel = None
+    
+    for other_pixel in pixel_list:
+        distance = math.sqrt((pixel.x - other_pixel.x)**2 + (pixel.y - other_pixel.y)**2) # Calculate Euclidean distance between the two pixels
+        if distance < closest_distance:
+            closest_distance = distance
+            closest_pixel = other_pixel
+    
+    return closest_pixel
+
+def get_pixels_in_rect(top_left, bottom_right):
+    pixels = []
+    x_min, y_min = top_left.x, top_left.y
+    x_max, y_max = bottom_right.x, bottom_right.y
+
+    for x in range(x_min, x_max+1):
+        for y in range(y_min, y_max+1):
+            pixels.append(Point(x,y))
+
+    return pixels
+
+def get_adjacent_pixels(pixel: Point, whitelist):
     x = pixel.x 
     y = pixel.y
-    adjacent_pixels = [Pixel(x-1, y), Pixel(x+1, y), Pixel(x, y-1), 
-        Pixel(x, y+1), Pixel(x-1, y-1), Pixel(x+1, y-1), 
-        Pixel(x-1, y+1), Pixel(x+1, y+1)]
+    adjacent_pixels = [Point(x-1, y), Point(x+1, y), Point(x, y-1), 
+        Point(x, y+1), Point(x-1, y-1), Point(x+1, y-1), 
+        Point(x-1, y+1), Point(x+1, y+1)]
     return [p for p in adjacent_pixels if p in whitelist]
 
 # Renders a supplied frame for usage by the Bad Apple player
 def render_frame(frame, is_pixel_whitelisted):
+    height, width = frame.shape
+    center_pixel = Point(width / 2, height / 2)
+
     changed_pixels = []
+
     for x in range(0, width):
         for y in range(0, height):
             if is_pixel_whitelisted(frame[y, x], x, y):
-                changed_pixels.append(Pixel(x, y))
+                changed_pixels.append(Point(x, y))
 
-    return []
+    result = []
+
+    # TODO: Implement optimisator
+    while len(changed_pixels) > 0:
+        closest = find_closest_pixel(center_pixel, changed_pixels)
+
+        rect = Rect(closest, closest)
+        
+        hit_max_right = False
+        hit_max_left = False
+        hit_max_top = False
+        hit_max_bottom = False
+
+        currently_expanding_to = Direction.RIGHT
+
+        while True:
+            if hit_max_right and hit_max_left and hit_max_top and hit_max_bottom: # if there is nowhere to expand anymore
+                break
+            match currently_expanding_to:
+                case Direction.RIGHT:
+                    if not hit_max_right:
+                        top_p = Point(rect.bottom_right.x + 1, rect.top_left.y)
+                        bottom_p = Point(rect.bottom_right.x + 1, rect.bottom_right.y)
+                        pixels = set(get_pixels_in_rect(top_p, bottom_p))
+
+                        hit_max_right = not pixels.issubset(set(changed_pixels))
+
+                        if not hit_max_right:
+                            rect.bottom_right = Point(rect.bottom_right.x + 1, rect.bottom_right.y)
+                    currently_expanding_to = Direction.LEFT
+                case Direction.LEFT:
+                    if not hit_max_left:
+                        top_p = Point(rect.top_left.x - 1, rect.top_left.y)
+                        bottom_p = Point(rect.top_left.x - 1, rect.bottom_right.y)
+                        pixels = set(get_pixels_in_rect(top_p, bottom_p))
+
+                        hit_max_left = not pixels.issubset(set(changed_pixels))
+
+                        if not hit_max_left:
+                            rect.top_left = Point(rect.top_left.x - 1, rect.top_left.y)
+                    currently_expanding_to = Direction.TOP
+                case Direction.TOP:
+                    if not hit_max_top:
+                        left_p = Point(rect.top_left.x, rect.top_left.y - 1)
+                        right_p = Point(rect.bottom_right.x, rect.top_left.y - 1)
+                        pixels = set(get_pixels_in_rect(left_p, right_p))
+
+                        hit_max_top = not pixels.issubset(set(changed_pixels))
+
+                        if not hit_max_top:
+                            rect.top_left = Point(rect.top_left.x, rect.top_left.y - 1)
+                    currently_expanding_to = Direction.BOTTOM
+                case Direction.BOTTOM:
+                    if not hit_max_bottom:
+                        left_p = Point(rect.top_left.x, rect.bottom_right.y + 1)
+                        right_p = Point(rect.bottom_right.x, rect.bottom_right.y + 1)
+                        pixels = set(get_pixels_in_rect(left_p, right_p))
+
+                        hit_max_bottom = not pixels.issubset(set(changed_pixels))
+
+                        if not hit_max_bottom:
+                            rect.bottom_right = Point(rect.bottom_right.x, rect.bottom_right.y + 1)
+                    currently_expanding_to = Direction.RIGHT
+        result.append(rect)
+        pixels = get_pixels_in_rect(rect.top_left, rect.bottom_right)
+        changed_pixels = list(set(changed_pixels) - set(pixels))
+
+    # post-process the created data to further reduce it's size
+    # TODO: Implement post-processing
+    # for i, rect in result:
+    #     if rect.top_left == rect.bottom_right: # can be optimised to a pixel
+    #         result[i] = Point(rect.top_left.x, rect.top_left.y)
+    #     if rect.
+
+    return result
 
 
 video_data = []
@@ -94,17 +202,10 @@ for _ in range(0, 120):
 
     frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-    height, width = frame.shape
-
     current_frame = int(video.get(cv.CAP_PROP_POS_FRAMES))
     print(f"Rendering frame {current_frame}/{all_frames} ({(current_frame / all_frames * 100):.2f}%)")
 
-    if current_frame == titlescreen_image_frame:
-        for x in range(0, width):
-            for y in range(0, height):
-                if frame[y, x] < 100:
-                    titlescreen_image.append(Pixel(x, y))
-    # titlescreen_image = render_frame(frame, lambda p, x, y: p < 100)
+    titlescreen_image = render_frame(frame, lambda p, x, y: p < 100)
 
     encoded_frame = render_frame(frame, lambda p, x, y: are_colors_different(prev_frame[y, x], p))
 
@@ -130,7 +231,7 @@ for i, chunk in enumerate(chunked_video_data):
             for data in frame:
                 file.write("{")
                 match data:
-                    case Pixel(x, y): file.write(f"{x},{y}")
+                    case Point(x, y): file.write(f"{x},{y}")
                     case Square(x, y, size): file.write(f"{x},{y},{size}")
                     case Rect(top_left, bottom_right): file.write(f"{top_left.x},{top_left.y},{bottom_right.x},{bottom_right.y}")
                     case default: pass # should never get here
@@ -143,10 +244,10 @@ with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
     file.write(f"local subtitle = \"{subtitle}\"\n")
     file.write(f"local author = \"{author}\"\n")
     file.write("local banner_image = {")
-    for p in titlescreen_image:
+    for rect in titlescreen_image:
         file.write("{")
-        file.write(f"{p.x},{p.y}")
-        # file.write(f"{sq.x},{sq.y},{sq.size}")
+        # file.write(f"{p.x},{p.y}")
+        file.write(f"{rect.top_left.x},{rect.top_left.y},{rect.bottom_right.x},{rect.bottom_right.y}")
         file.write("},")
     file.write("}\n")
     width = video.get(cv.CAP_PROP_FRAME_WIDTH)

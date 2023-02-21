@@ -28,12 +28,12 @@ local function renderFrame(frame, use_offsets)
         if use_offsets then
             lcd.drawFilledRectangle(
                 sq[1] + video_x_offset, sq[2] + video_y_offset,
-                sq[1] + video_x_offset + sq[3], sq[2] + video_y_offset + sq[3]
+                sq[3] + video_x_offset, sq[4] + video_y_offset
             )
         else
             lcd.drawFilledRectangle(
                 sq[1], sq[2],
-                sq[1] + sq[3], sq[2] + sq[3]
+                sq[3], sq[4]
             )
         end
     end
@@ -47,7 +47,7 @@ local function init()
     video_y_offset = (64 - video_size[2]) / 2
     
     for fname in dir("/SCRIPTS/BADAPPLE") do
-        if fname == "info.lua" then goto CONTINUE end
+        if fname == "info.lua" or fname == "info.luac" then goto CONTINUE end
         lcd.clear()
         lcd.drawText(2, 12, title, MIDSIZE)
         lcd.drawText(40, 24, subtitle, SMLSIZE)
@@ -60,7 +60,7 @@ local function init()
         lcd.refresh()
         loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), SMLSIZE)
         collectgarbage()
-        delay(100)
+        -- delay(100)
         ::CONTINUE::
     end
     title = nil
@@ -80,6 +80,7 @@ local function run(event, touchState)
     ::RENDER::
 
     for _, frame in ipairs(current_chunk_data) do
+        lcd.clear()
         local time = getTime()
 
         lcd.drawText(0, 0, "FPS:")
