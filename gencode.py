@@ -174,13 +174,21 @@ def render_frame(frame, is_pixel_whitelisted):
 
     # post-process the created data to further reduce it's size
     # TODO: Implement post-processing
-    # for i, rect in result:
-    #     if rect.top_left == rect.bottom_right: # can be optimised to a pixel
-    #         result[i] = Point(rect.top_left.x, rect.top_left.y)
-    #     if rect.
+    for i, rect in enumerate(result):
+        if rect.top_left.x == rect.bottom_right.x and rect.top_left.y == rect.bottom_right.y: # can be optimised to a pixel
+            result[i] = Point(rect.top_left.x, rect.top_left.y)
+            continue
+        if rect.bottom_right.x - rect.top_left.x == rect.bottom_right.y - rect.top_left.y: # two same sides, can be a square
+            result[i] = Square(rect.top_left.x, rect.top_left.x, rect.bottom_right.x - rect.top_left.x)
 
     return result
 
+def encode_shape(data):
+    match data:
+        case Point(x, y): return f"{x},{y}"
+        case Square(x, y, size): return f"{x},{y},{size}"
+        case Rect(top_left, bottom_right): return f"{top_left.x},{top_left.y},{bottom_right.x},{bottom_right.y}"
+        case default: pass # should never get here
 
 video_data = []
 
@@ -205,7 +213,8 @@ for _ in range(0, 120):
     current_frame = int(video.get(cv.CAP_PROP_POS_FRAMES))
     print(f"Rendering frame {current_frame}/{all_frames} ({(current_frame / all_frames * 100):.2f}%)")
 
-    titlescreen_image = render_frame(frame, lambda p, x, y: p < 100)
+    if current_frame == titlescreen_image_frame:
+        titlescreen_image = render_frame(frame, lambda p, x, y: p < 100)
 
     encoded_frame = render_frame(frame, lambda p, x, y: are_colors_different(prev_frame[y, x], p))
 
@@ -230,11 +239,7 @@ for i, chunk in enumerate(chunked_video_data):
             file.write("{")
             for data in frame:
                 file.write("{")
-                match data:
-                    case Point(x, y): file.write(f"{x},{y}")
-                    case Square(x, y, size): file.write(f"{x},{y},{size}")
-                    case Rect(top_left, bottom_right): file.write(f"{top_left.x},{top_left.y},{bottom_right.x},{bottom_right.y}")
-                    case default: pass # should never get here
+                file.write(encode_shape(data))
                 file.write("},")
             file.write("},")
         file.write("}\nreturn chunk_data")
@@ -244,10 +249,9 @@ with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
     file.write(f"local subtitle = \"{subtitle}\"\n")
     file.write(f"local author = \"{author}\"\n")
     file.write("local banner_image = {")
-    for rect in titlescreen_image:
+    for data in titlescreen_image:
         file.write("{")
-        # file.write(f"{p.x},{p.y}")
-        file.write(f"{rect.top_left.x},{rect.top_left.y},{rect.bottom_right.x},{rect.bottom_right.y}")
+        file.write(encode_shape(data))
         file.write("},")
     file.write("}\n")
     width = video.get(cv.CAP_PROP_FRAME_WIDTH)
