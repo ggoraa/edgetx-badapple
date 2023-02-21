@@ -12,29 +12,51 @@ local video_y_offset = 0
 local function loadNextChunk()
     current_chunk = current_chunk + 1
     current_chunk_data = nil
+    collectgarbage()
     local script, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", current_chunk))
     if (script == nil) then
-        lcd.drawText(0, 0, string.format("chunk err: %s", err))
+        lcd.drawText(0, 0, string.format("err: %s", err))
         lcd.refresh()
     else
         current_chunk_data = script()
     end
-    collectgarbage()
 end
 
 local function renderFrame(frame, use_offsets)
     use_offsets = use_offsets or true
-    for _, sq in ipairs(frame) do
+    for _, shape in ipairs(frame) do
         if use_offsets then
-            lcd.drawFilledRectangle(
-                sq[1] + video_x_offset, sq[2] + video_y_offset,
-                sq[3] + video_x_offset, sq[4] + video_y_offset
-            )
+            if #shape == 2 then -- pixel
+                lcd.drawPoint(
+                    shape[1] + video_x_offset, shape[2] + video_y_offset
+                )
+            elseif #shape == 3 then -- square
+                lcd.drawFilledRectangle(
+                    shape[1] + video_x_offset, shape[2] + video_y_offset,
+                    shape[1] + video_x_offset + shape[3], shape[2] + video_y_offset + shape[3]
+                )
+            elseif #shape == 4 then -- rect
+                lcd.drawFilledRectangle(
+                    shape[1] + video_x_offset, shape[2] + video_y_offset,
+                    shape[3] + video_x_offset, shape[4] + video_y_offset
+                )
+            end
         else
-            lcd.drawFilledRectangle(
-                sq[1], sq[2],
-                sq[3], sq[4]
-            )
+            if #shape == 2 then -- pixel
+                lcd.drawPoint(
+                    shape[1], shape[2]
+                )
+            elseif #shape == 3 then -- square
+                lcd.drawFilledRectangle(
+                    shape[1], shape[2],
+                    shape[1] + shape[3], shape[2] + shape[3]
+                )
+            elseif #shape == 4 then -- rect
+                lcd.drawFilledRectangle(
+                    shape[1], shape[2],
+                    shape[3], shape[4]
+                )
+            end
         end
     end
 end
@@ -53,14 +75,11 @@ local function init()
         lcd.drawText(40, 24, subtitle, SMLSIZE)
         lcd.drawText(2, 36, string.format("by %s", author))
         lcd.drawText(2, 55, fname, SMLSIZE)
-        for _, p in ipairs(image) do
-            lcd.drawPoint(p[1] + 50, p[2])
-        end
-        -- renderFrame(image, false)
+        renderFrame(image, false)
         lcd.refresh()
         loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), SMLSIZE)
         collectgarbage()
-        -- delay(100)
+        delay(10)
         ::CONTINUE::
     end
     title = nil
