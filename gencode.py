@@ -107,7 +107,6 @@ def render_frame(frame, is_pixel_whitelisted):
 
     result = []
 
-    # TODO: Implement optimisator
     while len(changed_pixels) > 0:
         closest = find_closest_pixel(center_pixel, changed_pixels)
 
@@ -173,7 +172,6 @@ def render_frame(frame, is_pixel_whitelisted):
         changed_pixels = list(set(changed_pixels) - set(pixels))
 
     # post-process the created data to further reduce it's size
-    # TODO: Implement post-processing
     for i, rect in enumerate(result):
         if rect.top_left.x == rect.bottom_right.x and rect.top_left.y == rect.bottom_right.y: # can be optimised to a pixel
             result[i] = Point(rect.top_left.x, rect.top_left.y)
@@ -200,10 +198,10 @@ titlescreen_image = []
 
 # for _ in range(0, 0):
 # for _ in range(0, 20):
-for _ in range(0, 120):    
+# for _ in range(0, 120):    
 # for _ in range(0, 240):    
 # for _ in range(0, 500):    
-# while True:
+while True:
     ret, frame = video.read()
     if not ret: break
     encoded_frame = []

@@ -12,51 +12,34 @@ local video_y_offset = 0
 local function loadNextChunk()
     current_chunk = current_chunk + 1
     current_chunk_data = nil
-    collectgarbage()
-    local script, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", current_chunk))
+    local script, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.luac", current_chunk), "bx")
     if (script == nil) then
         lcd.drawText(0, 0, string.format("err: %s", err))
         lcd.refresh()
     else
         current_chunk_data = script()
+        script = nil
+        err = nil
     end
+    collectgarbage("collect")
 end
 
-local function renderFrame(frame, use_offsets)
-    use_offsets = use_offsets or true
+local function renderFrame(frame, x_offset, y_offset)
     for _, shape in ipairs(frame) do
-        if use_offsets then
-            if #shape == 2 then -- pixel
-                lcd.drawPoint(
-                    shape[1] + video_x_offset, shape[2] + video_y_offset
-                )
-            elseif #shape == 3 then -- square
-                lcd.drawFilledRectangle(
-                    shape[1] + video_x_offset, shape[2] + video_y_offset,
-                    shape[1] + video_x_offset + shape[3], shape[2] + video_y_offset + shape[3]
-                )
-            elseif #shape == 4 then -- rect
-                lcd.drawFilledRectangle(
-                    shape[1] + video_x_offset, shape[2] + video_y_offset,
-                    shape[3] + video_x_offset, shape[4] + video_y_offset
-                )
-            end
-        else
-            if #shape == 2 then -- pixel
-                lcd.drawPoint(
-                    shape[1], shape[2]
-                )
-            elseif #shape == 3 then -- square
-                lcd.drawFilledRectangle(
-                    shape[1], shape[2],
-                    shape[1] + shape[3], shape[2] + shape[3]
-                )
-            elseif #shape == 4 then -- rect
-                lcd.drawFilledRectangle(
-                    shape[1], shape[2],
-                    shape[3], shape[4]
-                )
-            end
+        if #shape == 2 then -- pixel
+            lcd.drawPoint(
+                shape[1] + x_offset, shape[2] + y_offset
+            )
+        elseif #shape == 3 then -- square
+            lcd.drawFilledRectangle(
+                shape[1] + x_offset, shape[2] + y_offset,
+                shape[1] + x_offset + shape[3], shape[2] + y_offset + shape[3]
+            )
+        elseif #shape == 4 then -- rect
+            lcd.drawFilledRectangle(
+                shape[1] + x_offset, shape[2] + y_offset,
+                shape[3] - shape[1] + 1, shape[4] - shape[2] + 1
+            )
         end
     end
 end
@@ -69,22 +52,25 @@ local function init()
     video_y_offset = (64 - video_size[2]) / 2
     
     for fname in dir("/SCRIPTS/BADAPPLE") do
-        if fname == "info.lua" or fname == "info.luac" then goto CONTINUE end
+        if string.find(fname, ".luac") ~= nil or fname == "info.lua" then
+            goto CONTINUE
+        end
         lcd.clear()
         lcd.drawText(2, 12, title, MIDSIZE)
         lcd.drawText(40, 24, subtitle, SMLSIZE)
         lcd.drawText(2, 36, string.format("by %s", author))
         lcd.drawText(2, 55, fname, SMLSIZE)
-        renderFrame(image, false)
+        renderFrame(image, 50, 0)
         lcd.refresh()
-        loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), SMLSIZE)
-        collectgarbage()
-        delay(10)
+        local temp = loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), "c")
+        temp = nil
+        collectgarbage("collect")
         ::CONTINUE::
     end
     title = nil
     subtitle = nil
     image = nil
+    collectgarbage("collect")
     lcd.clear()
 end
 
@@ -99,20 +85,24 @@ local function run(event, touchState)
     ::RENDER::
 
     for _, frame in ipairs(current_chunk_data) do
-        lcd.clear()
+        -- lcd.clear()
         local time = getTime()
 
-        lcd.drawText(0, 0, "FPS:")
+        lcd.drawText(0, 0, "FPS:", SMLSIZE)
         local time_delta = getTime() - framerate_time
-        print("time_delta: ", time_delta)
-        lcd.drawText(0, 10, string.format("%0.1f", 1 / time_delta * 100))
+        -- print("time_delta: ", time_delta)
+        lcd.drawText(0, 10, string.format("%0.1f", 1 / time_delta * 100), SMLSIZE)
+        lcd.drawText(0, 20, "MEM:", SMLSIZE)
+        lcd.drawText(0, 30, string.format("%d", getAvailableMemory()), SMLSIZE)
+        lcd.drawText(0, 40, "CHK:", SMLSIZE)
+        lcd.drawText(0, 50, string.format("%d", current_chunk), SMLSIZE)
         dynamic_frame_limiter_offset = math.min((10 - time_delta) / 1, -0.1)
-        print("dynamic_frame_limiter_offset: ", dynamic_frame_limiter_offset)
+        -- print("dynamic_frame_limiter_offset: ", dynamic_frame_limiter_offset)
         framerate_time = getTime()
 
-        renderFrame(frame)
+        renderFrame(frame, video_x_offset, video_y_offset)
         lcd.refresh()
-        print("frame limiter delay: ", 10 - dynamic_frame_limiter_offset)
+        -- print("frame limiter delay: ", 10 - dynamic_frame_limiter_offset)
         lcd.resetBacklightTimeout()
         while (time + (10 + dynamic_frame_limiter_offset) > getTime()) do end
     end
