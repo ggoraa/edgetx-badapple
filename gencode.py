@@ -5,14 +5,14 @@ import math
 import os
 import shutil
 from dataclasses import dataclass
-import time
+import sys
 
 video = cv.VideoCapture("badapple-qx7.mp4")
 all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 title = "Bad Apple"
 subtitle = "on EdgeTX"
 author = "GGorAA"
-frame_chunk_size = 3 # frames per chunk
+video_chunk_size_kb = 7 # max size of a chunk in Kb
 titlescreen_image_frame = 90 # frame of the video that would be extracted as the titlescreen image
 
 @dataclass
@@ -42,12 +42,32 @@ class Direction(Enum):
     TOP = 2
     BOTTOM = 3
 
-# Yield successive n-sized
-# chunks from l.
-def divide_chunks(l, n):
-    # looping till length l
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+def sizeof(obj): # idk it looks better that way
+    return sys.getsizeof(obj)
+
+def write_chunks(video, max_size_kb):
+    frame_counter = 0
+    chunk_counter = 1
+    chunk_data = ""
+    while frame_counter < len(video):
+        frame = video[frame_counter]
+        frame_data = "{"
+        for data in frame:
+            frame_data += "{"
+            frame_data += encode_shape(data)
+            frame_data += "},"
+        frame_data += "},"
+        if sizeof(chunk_data) + sizeof(frame_data) >= max_size_kb * 1000: # write a new chunk
+            print(f"Writing chunk {chunk_counter}...")
+            with open(f"bundle/SCRIPTS/BADAPPLE/chunk{chunk_counter}.lua", "w") as file:
+                file.write("local chunk_data = {")
+                file.write(chunk_data)
+                file.write("}\nreturn chunk_data")
+            chunk_data = "" # clear
+            chunk_counter += 1
+        else:
+            chunk_data += frame_data
+            frame_counter += 1
 
 def are_colors_different(first, second):
     if first > second:
@@ -172,14 +192,13 @@ def render_frame(frame, is_pixel_whitelisted):
         changed_pixels = list(set(changed_pixels) - set(pixels))
 
     # post-process the created data to further reduce it's size
-#    for i, rect in enumerate(result):
-#        if rect.top_left.x == rect.bottom_right.x and rect.top_left.y == rect.bottom_right.y: # can be 
-# optimised to a pixel
-#            result[i] = Point(rect.top_left.x, rect.top_left.y)
-#            continue
-#        if rect.bottom_right.x - rect.top_left.x == rect.bottom_right.y - rect.top_left.y: # two same 
-# sides, can be a square
-#            result[i] = Square(rect.top_left.x, rect.top_left.x, rect.bottom_right.x - rect.top_left.x)
+    for i, rect in enumerate(result):
+        if rect.top_left.x == rect.bottom_right.x and rect.top_left.y == rect.bottom_right.y: # can be just a pixel
+            result[i] = Point(rect.top_left.x, rect.top_left.y)
+            continue
+        # TODO: Fix square generation
+    #    if rect.bottom_right.x - rect.top_left.x == rect.bottom_right.y - rect.top_left.y: # two same sides, can be a square
+    #        result[i] = Square(rect.top_left.x, rect.top_left.x, rect.bottom_right.x - rect.top_left.x)
 
     return result
 
@@ -188,7 +207,6 @@ def encode_shape(data):
         case Point(x, y): return f"{x},{y}"
         case Square(x, y, size): return f"{x},{y},{size}"
         case Rect(top_left, bottom_right): return f"{top_left.x},{top_left.y},{bottom_right.x},{bottom_right.y}"
-        case default: pass # should never get here
 
 video_data = []
 
@@ -222,8 +240,6 @@ for _ in range(0, 700):
     prev_frame = frame
     video_data.append(encoded_frame)
 
-chunked_video_data = divide_chunks(video_data, frame_chunk_size)
-
 try:
     os.mkdir("bundle")
     os.mkdir("bundle/SCRIPTS")
@@ -232,18 +248,7 @@ try:
     os.mkdir("bundle/SOUNDS")
 except OSError as error: pass
 
-for i, chunk in enumerate(chunked_video_data):
-    with open(f"bundle/SCRIPTS/BADAPPLE/chunk{i + 1}.lua", "w") as file:
-        print(f"Writing chunk {i + 1}...")
-        file.write("local chunk_data = {")
-        for frame in chunk:
-            file.write("{")
-            for data in frame:
-                file.write("{")
-                file.write(encode_shape(data))
-                file.write("},")
-            file.write("},")
-        file.write("}\nreturn chunk_data")
+write_chunks(video_data, video_chunk_size_kb)
 
 print("Writing info...")
 
@@ -271,4 +276,4 @@ shutil.copy2("badapple-qx7.wav", "bundle/SOUNDS/badapple.wav")
 video.release()
 cv.destroyAllWindows()
 
-print("Done.")
+print("Done!")
