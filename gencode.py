@@ -12,7 +12,7 @@ all_frames = int(video.get(cv.CAP_PROP_FRAME_COUNT))
 title = "Bad Apple"
 subtitle = "on EdgeTX"
 author = "GGorAA"
-frame_chunk_size = 5 # frames per chunk
+frame_chunk_size = 3 # frames per chunk
 titlescreen_image_frame = 90 # frame of the video that would be extracted as the titlescreen image
 
 @dataclass
@@ -172,12 +172,14 @@ def render_frame(frame, is_pixel_whitelisted):
         changed_pixels = list(set(changed_pixels) - set(pixels))
 
     # post-process the created data to further reduce it's size
-    for i, rect in enumerate(result):
-        if rect.top_left.x == rect.bottom_right.x and rect.top_left.y == rect.bottom_right.y: # can be optimised to a pixel
-            result[i] = Point(rect.top_left.x, rect.top_left.y)
-            continue
-        if rect.bottom_right.x - rect.top_left.x == rect.bottom_right.y - rect.top_left.y: # two same sides, can be a square
-            result[i] = Square(rect.top_left.x, rect.top_left.x, rect.bottom_right.x - rect.top_left.x)
+#    for i, rect in enumerate(result):
+#        if rect.top_left.x == rect.bottom_right.x and rect.top_left.y == rect.bottom_right.y: # can be 
+# optimised to a pixel
+#            result[i] = Point(rect.top_left.x, rect.top_left.y)
+#            continue
+#        if rect.bottom_right.x - rect.top_left.x == rect.bottom_right.y - rect.top_left.y: # two same 
+# sides, can be a square
+#            result[i] = Square(rect.top_left.x, rect.top_left.x, rect.bottom_right.x - rect.top_left.x)
 
     return result
 
@@ -201,7 +203,8 @@ titlescreen_image = []
 # for _ in range(0, 120):    
 # for _ in range(0, 240):    
 # for _ in range(0, 500):    
-while True:
+for _ in range(0, 700):    
+# while True:
     ret, frame = video.read()
     if not ret: break
     encoded_frame = []
@@ -209,7 +212,7 @@ while True:
     frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
     current_frame = int(video.get(cv.CAP_PROP_POS_FRAMES))
-    print(f"Rendering frame {current_frame}/{all_frames} ({(current_frame / all_frames * 100):.2f}%)")
+    print(f"Rendering frame {current_frame}/{all_frames} ({(current_frame / all_frames * 100):.2f}%)...")
 
     if current_frame == titlescreen_image_frame:
         titlescreen_image = render_frame(frame, lambda p, x, y: p < 100)
@@ -231,7 +234,7 @@ except OSError as error: pass
 
 for i, chunk in enumerate(chunked_video_data):
     with open(f"bundle/SCRIPTS/BADAPPLE/chunk{i + 1}.lua", "w") as file:
-        print(f"Writing chunk {i + 1}")
+        print(f"Writing chunk {i + 1}...")
         file.write("local chunk_data = {")
         for frame in chunk:
             file.write("{")
@@ -241,6 +244,8 @@ for i, chunk in enumerate(chunked_video_data):
                 file.write("},")
             file.write("},")
         file.write("}\nreturn chunk_data")
+
+print("Writing info...")
 
 with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
     file.write(f"local title = \"{title}\"\n")
