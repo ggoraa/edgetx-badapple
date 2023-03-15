@@ -4,24 +4,32 @@ local function delay(time)
     local currentTime = getTime()
     while (currentTime + time > getTime()) do end
 end
-local current_chunk = 0
-local current_chunk_data = nil
+
+local cchunk = { -- current chunk
+    index = 0,
+    data = nil
+}
 local video_x_offset = 0
 local video_y_offset = 0
 
 local function loadNextChunk()
-    current_chunk = current_chunk + 1
-    current_chunk_data = nil
-    local script, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.luac", current_chunk), "bx")
-    if (script == nil) then
-        lcd.drawText(0, 0, string.format("err: %s", err))
+    cchunk.index = cchunk.index + 1
+    cchunk.data = nil
+    local script, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.luac", cchunk.index), "bx")
+    if script == nil then
+        print(err)
+        local temp = string.gsub(err, "loadScript%(\"/SCRIPTS/BADAPPLE/chunk", "")
+        print(temp)
+        local temp2 = string.gsub(temp, ".luac\", \"bx%\"%) error:", "")
+        print(temp2)
+        lcd.drawText(0, 0, temp2)
         lcd.refresh()
     else
-        current_chunk_data = script()
+        cchunk.data = script()
         script = nil
         err = nil
     end
-    collectgarbage("collect")
+    collectgarbage()
 end
 
 local function renderFrame(frame, x_offset, y_offset)
@@ -33,7 +41,7 @@ local function renderFrame(frame, x_offset, y_offset)
         elseif #shape == 3 then -- square
             lcd.drawFilledRectangle(
                 shape[1] + x_offset, shape[2] + y_offset,
-                shape[1] + x_offset + shape[3], shape[2] + y_offset + shape[3]
+                shape[1] + 1 + shape[3], shape[2] + 1 + shape[3]
             )
         elseif #shape == 4 then -- rect
             lcd.drawFilledRectangle(
@@ -64,51 +72,47 @@ local function init()
         lcd.refresh()
         local temp = loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), "c")
         temp = nil
-        collectgarbage("collect")
+        collectgarbage()
         ::CONTINUE::
     end
     title = nil
     subtitle = nil
     image = nil
-    collectgarbage("collect")
-    lcd.clear()
+    collectgarbage()
 end
-
 
 local function run(event, touchState)
     local framerate_time = getTime()
     local dynamic_frame_limiter_offset = 0
-    -- lcd.clear()
+    lcd.clear()
     loadNextChunk()
     playFile("/SOUNDS/badapple.wav")
 
     ::RENDER::
 
-    for _, frame in ipairs(current_chunk_data) do
-        -- lcd.clear()
+    for _, frame in ipairs(cchunk.data) do
+        lcd.clear()
         local time = getTime()
 
         lcd.drawText(0, 0, "FPS:", SMLSIZE)
         local time_delta = getTime() - framerate_time
-        -- print("time_delta: ", time_delta)
-        lcd.drawText(0, 10, string.format("%0.1f", 1 / time_delta * 100), SMLSIZE)
+        lcd.drawText(0, 8, string.format("%0.1f", 1 / time_delta * 100), SMLSIZE)
         lcd.drawText(0, 20, "MEM:", SMLSIZE)
-        lcd.drawText(0, 30, string.format("%d", getAvailableMemory()), SMLSIZE)
+        lcd.drawText(0, 28, string.format("%d", getAvailableMemory()), SMLSIZE)
         lcd.drawText(0, 40, "CHK:", SMLSIZE)
-        lcd.drawText(0, 50, string.format("%d", current_chunk), SMLSIZE)
+        lcd.drawText(0, 48, string.format("%d", cchunk.index), SMLSIZE)
         dynamic_frame_limiter_offset = math.min((10 - time_delta) / 1, -0.1)
-        -- print("dynamic_frame_limiter_offset: ", dynamic_frame_limiter_offset)
         framerate_time = getTime()
 
         renderFrame(frame, video_x_offset, video_y_offset)
         lcd.refresh()
-        -- print("frame limiter delay: ", 10 - dynamic_frame_limiter_offset)
         lcd.resetBacklightTimeout()
         while (time + (10 + dynamic_frame_limiter_offset) > getTime()) do end
     end
 
     loadNextChunk()
     goto RENDER
+    return 0
 end
 
 return { run=run, init=init }
