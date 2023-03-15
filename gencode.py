@@ -221,8 +221,8 @@ titlescreen_image = []
 # for _ in range(0, 120):    
 # for _ in range(0, 240):    
 # for _ in range(0, 500):    
-for _ in range(0, 700):    
-# while True:
+# for _ in range(0, 700):    
+while True:
     ret, frame = video.read()
     if not ret: break
     encoded_frame = []
