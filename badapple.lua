@@ -11,7 +11,7 @@ local cchunk = { -- current chunk
 }
 local video_x_offset = 0
 local video_y_offset = 0
-local playing_frame = 0
+local current_frame = 0
 
 local function loadNextChunk()
     cchunk.index = cchunk.index + 1
@@ -83,33 +83,39 @@ local function init()
 end
 
 local function run(event, touchState)
-    local framerate_time = getTime()
     local dynamic_frame_limiter_offset = 0
+    local show_debug_info = event == EVT_ENTER_LONG
     lcd.clear()
     loadNextChunk()
+    local sound_start = getTime() - 50
     playFile("/SOUNDS/badapple.wav")
 
     ::RENDER::
 
     for _, frame in ipairs(cchunk.data) do
         local time = getTime()
-
-        lcd.drawText(0, 0, "FPS:", SMLSIZE)
-        local time_delta = getTime() - framerate_time
-        lcd.drawText(0, 8, string.format("%0.1f", 1 / time_delta * 100), SMLSIZE)
-        lcd.drawText(0, 20, "MEM:", SMLSIZE)
-        lcd.drawText(0, 28, string.format("%d", getAvailableMemory()), SMLSIZE)
-        lcd.drawText(0, 40, "CNT:", SMLSIZE)
-        lcd.drawText(0, 48, string.format("%d", cchunk.index), SMLSIZE)
-        lcd.drawText(108, 0, "FRM:", SMLSIZE)
-        lcd.drawText(108, 8, string.format("%d", playing_frame), SMLSIZE)
+        local time_delta = getTime() - (sound_start + current_frame * 10)
         dynamic_frame_limiter_offset = math.min((10 - time_delta) / 1, -0.1)
-        framerate_time = getTime()
+
+        if show_debug_info then
+            lcd.drawText(0, 0, "FPS:", SMLSIZE)
+            lcd.drawText(0, 8, string.format("%0.1f", 1 / time_delta * 100), SMLSIZE)
+            lcd.drawText(0, 20, "MEM:", SMLSIZE)
+            lcd.drawText(0, 28, string.format("%d", getAvailableMemory()), SMLSIZE)
+            lcd.drawText(0, 40, "CNT:", SMLSIZE)
+            lcd.drawText(0, 48, string.format("%d", cchunk.index), SMLSIZE)
+            lcd.drawText(108, 0, "FRM:", SMLSIZE)
+            lcd.drawText(108, 8, string.format("%d", current_frame), SMLSIZE)
+            lcd.drawText(108, 20, "FLO:", SMLSIZE)
+            lcd.drawText(108, 28, string.format("%d", dynamic_frame_limiter_offset), SMLSIZE)
+            lcd.drawText(108, 40, "TDE:", SMLSIZE)
+            lcd.drawText(108, 48, string.format("%d", time_delta), SMLSIZE)
+        end
 
         renderFrame(frame, video_x_offset, video_y_offset)
         lcd.refresh()
         lcd.resetBacklightTimeout()
-        playing_frame = playing_frame + 1
+        current_frame = current_frame + 1
         while (time + (10 + dynamic_frame_limiter_offset) > getTime()) do end
     end
 
