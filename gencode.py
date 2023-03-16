@@ -47,7 +47,7 @@ def sizeof(obj): # idk it looks better that way
 
 def write_chunks(video, max_size_kb):
     frame_counter = 0
-    chunk_counter = 1
+    chunk_counter = 0
     chunk_data = ""
     while frame_counter < len(video):
         frame = video[frame_counter]
@@ -68,6 +68,7 @@ def write_chunks(video, max_size_kb):
         else:
             chunk_data += frame_data
             frame_counter += 1
+    return chunk_counter
 
 def are_colors_different(first, second):
     if first > second:
@@ -248,7 +249,7 @@ try:
     os.mkdir("bundle/SOUNDS")
 except OSError as error: pass
 
-write_chunks(video_data, video_chunk_size_kb)
+total_chunks = write_chunks(video_data, video_chunk_size_kb)
 
 print("Writing info...")
 
@@ -267,7 +268,8 @@ with open(f"bundle/SCRIPTS/BADAPPLE/info.lua", "w") as file:
     file.write("local video_size = {")
     file.write(f"{width:.0f},{height:.0f}")
     file.write("}\n")
-    file.write("return title, subtitle, author, banner_image, video_size")
+    file.write(f"local chunk_count = {total_chunks}\n")
+    file.write("return { title = title, subtitle = subtitle, author = author, banner_image = banner_image, video_size = video_size, chunk_count = chunk_count }")
 
 
 shutil.copy2("badapple.lua", "bundle/SCRIPTS/TOOLS")

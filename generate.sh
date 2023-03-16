@@ -22,3 +22,21 @@ fi
 echo "Running .lua generator..."
 rm -rf bundle
 python3 gencode.py
+
+# if [[ ! -d "lua" ]]; then
+#     echo "Downloading Lua 5.2.2..."
+#     curl -R -O "https://www.lua.org/ftp/lua-5.2.2.tar.gz"
+#     tar zxf lua-5.2.2.tar.gz
+#     rm lua-5.2.2.tar.gz
+#     echo "Building Lua..."
+#     mv lua-5.2.2 lua
+#     cd lua
+#     make macosx local
+#     cd ..
+# fi
+
+# echo "Precompiling chunks..."
+# for FILE in bundle/SCRIPTS/BADAPPLE/* ; do
+#     ./lua/install/bin/luac -s -o ${FILE}c $FILE
+#     rm $FILE
+# done;

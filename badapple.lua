@@ -6,7 +6,7 @@ local function delay(time)
 end
 
 local cchunk = { -- current chunk
-    index = 0,
+    index = -1,
     data = nil
 }
 local video_x_offset = 0
@@ -18,12 +18,9 @@ local function loadNextChunk()
     cchunk.data = nil
     local script, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.luac", cchunk.index), "bx")
     if script == nil then
-        print(err)
         local temp = string.gsub(err, "loadScript%(\"/SCRIPTS/BADAPPLE/chunk", "")
-        print(temp)
-        local temp2 = string.gsub(temp, ".luac\", \"bx%\"%) error:", "")
-        print(temp2)
-        lcd.drawText(0, 0, temp2)
+        local temp2 = string.gsub(temp, ".luac\", \"bx\"%) error:", "")
+        lcd.drawText(0, 0, temp2, SMLSIZE)
         lcd.refresh()
     else
         cchunk.data = script()
@@ -56,29 +53,21 @@ end
 local function init()
     lcd.clear()
 
-    local title, subtitle, author, image, video_size = loadScript("/SCRIPTS/BADAPPLE/info.lua")()
-    video_x_offset = (128 - video_size[1]) / 2
-    video_y_offset = (64 - video_size[2]) / 2
+    local info = loadScript("/SCRIPTS/BADAPPLE/info.lua")()
+    video_x_offset = (128 - info.video_size[1]) / 2
+    video_y_offset = (64 - info.video_size[2]) / 2
     
-    for fname in dir("/SCRIPTS/BADAPPLE") do
-        if string.find(fname, ".luac") ~= nil or fname == "info.lua" then
-            goto CONTINUE
-        end
+    for i = 0, info.chunk_count do
         lcd.clear()
-        lcd.drawText(2, 12, title, MIDSIZE)
-        lcd.drawText(40, 24, subtitle, SMLSIZE)
-        lcd.drawText(2, 36, string.format("by %s", author))
-        lcd.drawText(2, 55, fname, SMLSIZE)
-        renderFrame(image, 50, 0)
+        lcd.drawText(2, 12, info.title, MIDSIZE)
+        lcd.drawText(40, 24, info.subtitle, SMLSIZE)
+        lcd.drawText(2, 36, string.format("by %s", info.author))
+        lcd.drawText(2, 55, string.format("Chunk %d", i), SMLSIZE)
+        renderFrame(info.banner_image, 50, 0)
         lcd.refresh()
-        local temp = loadScript(string.format("/SCRIPTS/BADAPPLE/%s", fname), "c")
-        temp = nil
+        loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", i), "c")
         collectgarbage()
-        ::CONTINUE::
     end
-    title = nil
-    subtitle = nil
-    image = nil
     collectgarbage()
 end
 
