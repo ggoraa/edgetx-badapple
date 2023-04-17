@@ -2,10 +2,12 @@ local toolName = "TNS|Bad Apple|TNE"
 
 local function delay(time)
     local currentTime = getTime()
-    while (currentTime + time > getTime()) do end
+    while (currentTime + time > getTime()) do
+    end
 end
 
-local cchunk = { -- current chunk
+local cchunk = {
+    -- current chunk
     index = -1,
     data = nil
 }
@@ -56,7 +58,7 @@ local function init()
     local info = loadScript("/SCRIPTS/BADAPPLE/info.lua")()
     video_x_offset = (128 - info.video_size[1]) / 2
     video_y_offset = (64 - info.video_size[2]) / 2
-    
+
     for i = 0, info.chunk_count do
         lcd.clear()
         lcd.drawText(2, 12, info.title, MIDSIZE)
@@ -68,7 +70,41 @@ local function init()
         loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", i), "c")
         collectgarbage()
     end
-    collectgarbage()
+
+    local error_count = 1 -- just so that the while loop can start
+    while error_count > 0 do
+        error_count = 0
+
+        -- check if there are any not compiled chunks
+        for i = 0, info.chunk_count do
+            local file = fstat(string.format("/SCRIPTS/BADAPPLE/chunk%d.luac", i))
+
+            lcd.clear()
+            lcd.drawText(2, 12, info.title, MIDSIZE)
+            lcd.drawText(40, 24, info.subtitle, SMLSIZE)
+            lcd.drawText(2, 36, string.format("by %s", info.author))
+            lcd.drawText(2, 55, string.format("Checking %d (%d)", i, error_count), SMLSIZE)
+            renderFrame(info.banner_image, 50, 0)
+            lcd.refresh()
+
+            if file == nil then
+                error_count = error_count + 1
+                local fn, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", i), "c")
+
+                if fn == nil then
+                    lcd.clear()
+                    lcd.drawText(0, 0, err, SMLSIZE)
+                    lcd.refresh()
+                    while true do
+                    end
+                end
+                fn = nil
+                err = nil
+            end
+            file = nil
+            collectgarbage()
+        end
+    end
 end
 
 local function run(event, touchState)
@@ -105,7 +141,8 @@ local function run(event, touchState)
         lcd.refresh()
         lcd.resetBacklightTimeout()
         current_frame = current_frame + 1
-        while (time + (10 + dynamic_frame_limiter_offset) > getTime()) do end
+        while (time + (10 + dynamic_frame_limiter_offset) > getTime()) do
+        end
     end
 
     loadNextChunk()
@@ -113,4 +150,4 @@ local function run(event, touchState)
     return 0
 end
 
-return { run=run, init=init }
+return { run = run, init = init }

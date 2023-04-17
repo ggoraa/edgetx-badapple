@@ -1,4 +1,7 @@
-badapple*.mp4
-badapple*.mp3
-badapple*.wav
+target
+.vscode
 bundle
+badapple-qx7.mp4
+badapple-qx7.wav
+badapple.mp4
+Cargo.lock

@@ -21,7 +21,16 @@ fi
 
 echo "Running .lua generator..."
 rm -rf bundle
-python3 gencode.py
+mkdir bundle
+mkdir bundle/SCRIPTS
+mkdir bundle/SCRIPTS/TOOLS
+mkdir bundle/SCRIPTS/BADAPPLE
+mkdir bundle/SOUNDS
+cargo run
+
+echo "Finishing bundle..."
+cp badapple-qx7.wav bundle/SOUNDS/badapple.wav
+cp badapple.lua bundle/SCRIPTS/TOOLS/badapple.lua
 
 # if [[ ! -d "lua" ]]; then
 #     echo "Downloading Lua 5.2.2..."
