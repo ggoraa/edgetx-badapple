@@ -43,7 +43,7 @@ pub fn write_info(
     Ok(())
 }
 
-pub async fn write_chunks(video_data: Vec<Vec<Shape>>, max_size_kb: u32) -> Result<u32> {
+pub async fn write_chunks(video_data: Vec<Vec<Shape>>, max_size_kb: f32) -> Result<u32> {
     let mut frame_counter = 0;
     let mut chunk_counter = 0;
     let mut chunk_data = String::new();
@@ -55,7 +55,7 @@ pub async fn write_chunks(video_data: Vec<Vec<Shape>>, max_size_kb: u32) -> Resu
             frame_data.push_str(format!("{{{}}},", encode_shape(shape)).as_str());
         }
         frame_data.push_str("},");
-        if chunk_data.len() + frame_data.len() >= (max_size_kb * 1000) as usize {
+        if chunk_data.len() + frame_data.len() >= (max_size_kb * 1000.0) as usize {
             println!("Writing chunk {chunk_counter}...");
             let mut chunk_lua =
                 File::create(format!("bundle/SCRIPTS/BADAPPLE/chunk{chunk_counter}.lua"))?;

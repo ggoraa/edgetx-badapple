@@ -59,15 +59,38 @@ local function init()
     video_x_offset = (128 - info.video_size[1]) / 2
     video_y_offset = (64 - info.video_size[2]) / 2
 
-    for i = 0, info.chunk_count do
-        lcd.clear()
-        lcd.drawText(2, 12, info.title, MIDSIZE)
-        lcd.drawText(40, 24, info.subtitle, SMLSIZE)
-        lcd.drawText(2, 36, string.format("by %s", info.author))
+    lcd.clear()
+    lcd.drawText(2, 12, info.title, MIDSIZE)
+    lcd.drawText(40, 24, info.subtitle, SMLSIZE)
+    lcd.drawText(2, 36, string.format("by %s", info.author))
+    renderFrame(info.banner_image, 50, 0)
+    local chunk_count = info.chunk_count
+    info = nil
+    collectgarbage()
+
+    for i = 0, chunk_count - 1 do
+        lcd.drawFilledRectangle(0, 55, 45, 9, ERASE)
         lcd.drawText(2, 55, string.format("Chunk %d", i), SMLSIZE)
-        renderFrame(info.banner_image, 50, 0)
         lcd.refresh()
         loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", i), "c")
+        collectgarbage()
+
+        local file = fstat(string.format("/SCRIPTS/BADAPPLE/chunk%d.luac", i))
+
+        if file == nil then
+            local fn, err = loadScript(string.format("/SCRIPTS/BADAPPLE/chunk%d.lua", i), "c")
+
+            if fn == nil then
+                lcd.clear()
+                lcd.drawText(0, 0, err, SMLSIZE)
+                lcd.drawText(0, 10, string.format("%d", i), SMLSIZE)
+                lcd.refresh()
+                delay(10)
+            end
+            fn = nil
+            err = nil
+        end
+        file = nil
         collectgarbage()
     end
 
@@ -76,15 +99,11 @@ local function init()
         error_count = 0
 
         -- check if there are any not compiled chunks
-        for i = 0, info.chunk_count do
+        for i = 0, chunk_count - 1 do
             local file = fstat(string.format("/SCRIPTS/BADAPPLE/chunk%d.luac", i))
 
-            lcd.clear()
-            lcd.drawText(2, 12, info.title, MIDSIZE)
-            lcd.drawText(40, 24, info.subtitle, SMLSIZE)
-            lcd.drawText(2, 36, string.format("by %s", info.author))
+            lcd.drawFilledRectangle(0, 55, 45, 9, ERASE)
             lcd.drawText(2, 55, string.format("Checking %d (%d)", i, error_count), SMLSIZE)
-            renderFrame(info.banner_image, 50, 0)
             lcd.refresh()
 
             if file == nil then
@@ -94,9 +113,9 @@ local function init()
                 if fn == nil then
                     lcd.clear()
                     lcd.drawText(0, 0, err, SMLSIZE)
+                    lcd.drawText(0, 10, string.format("%d %d", i, error_count), SMLSIZE)
                     lcd.refresh()
-                    while true do
-                    end
+                    delay(10)
                 end
                 fn = nil
                 err = nil
